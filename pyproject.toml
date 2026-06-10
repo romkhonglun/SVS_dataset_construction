@@ -1,0 +1,58 @@
+[project]
+authors = [{name = "nguyenhuucong", email = "nguyenhuucongzz01@gmail.com"}]
+dependencies = [
+    "audio-separator>=0.18",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
+    "torchaudio==2.6.0",
+    "pandas>=2.0",
+    "transformers>=4.40",
+    "librosa>=0.10",
+    "soundfile>=0.12",
+    "numpy>=1.26",
+    "tqdm>=4.66", "chunkformer @ git+https://github.com/khanld/chunkformer.git",
+    "basic-pitch>=0.3",
+]
+name = "SVS_dataset_contruction"
+requires-python = ">= 3.11"
+version = "0.1.0"
+
+[project.scripts]
+svs-pipeline = "svs_dataset_contruction.pipeline:main"
+svs-extract-midi = "svs_dataset_contruction.extract_midi_batch:main"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.environments]
+default = { features = [], solve-group = "default" }
+
+[tool.pixi.activation]
+scripts = ["activation.sh"]
+
+[tool.pixi.dependencies]
+python = ">=3.11,<3.13"
+pyrefly = ">=1.0.0,<2"
+textgrid = ">=1.5,<2"
+transformers = ">=5.9.0,<6"
+montreal-forced-aligner = ">=3"
+librosa = ">=0.11.0,<0.12"
+libstdcxx-ng = ">=13"
+
+[tool.pixi.pypi-options]
+extra-index-urls = ["https://download.pytorch.org/whl/cu126"]
+
+[tool.pixi.pypi-dependencies]
+svs_dataset_contruction = { path = ".", editable = true }
+onnxruntime-gpu = ">=1.18.0"
+basic-pitch = ">=0.3"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pixi.tasks]

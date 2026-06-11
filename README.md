@@ -1,29 +1,28 @@
 # SVS_dataset_contruction
 
 Pipeline xây dựng dataset cho **Singing Voice Synthesis (SVS)** — hỗ trợ các model như DiffSinger, TCSinger, và SoulX-Singer.
-Project được thiết kế tối ưu cho **tiếng Việt**, từ tách vocal, transcribe lời, forced alignment đến cắt segment.
+Project được thiết kế tối ưu cho **tiếng Việt**, từ tách vocal, transcribe lời, forced alignment đến đồng bộ hóa MIDI.
 
 ---
 
-## Tính năng đã hoàn thành
+## Tính năng nổi bật
 
-| Bước | Mô tả | Module |
-|------|-------|--------|
-| **1. Tách Vocal** | Tách vocal khỏi nhạc nền bằng MelBand RoFormer (`audio-separator`). Chỉ giữ lại vocal, xóa instrumental/drums. | `separator.py` |
-| **2. Transcribe** | Chuyển audio tiếng Việt thành lyrics (lời bài hát) bằng **ChunkFormer RNNT** (`khanhld/chunkformer-rnnt-large-vie`). | `transcriber.py` |
-| **3. Forced Alignment** | Căn chỉnh word-level giữa audio và lyrics bằng **Wav2Vec2 Việt Nam** (`nguyenvulebinh/wav2vec2-base-vietnamese-250h`), xuất file **TextGrid** với tier `words` và `confidence`. | `aligner.py` |
-| **4. Trích xuất MIDI** | Trích xuất note/pitch từ audio vocal bằng model **GAME** (ONNX) hoặc **basic-pitch** (Spotify). | `note_extractor.py` |
-| **5. Cắt Segment** | Cắt audio thành các đoạn segment (0.5s – 15s) dựa trên word timestamps từ FA. | `segmenter.py` |
-| **6. Chuẩn bị Dataset** | Validate `metadata.csv`, tạo cấu trúc thư mục canonical cho dataset. | `preparator.py` |
-| **7. Batch Runner** | Chạy toàn bộ pipeline hoặc từng phần cho cả dataset; hỗ trợ GPU và multiprocessing. | `run_full_pipeline.py`, `extract_midi_batch.py` |
-| **8. CLI** | Giao diện dòng lệnh (`svs-pipeline`) để chạy từng bước hoặc full pipeline. | `pipeline.py` |
+| Bước | Mô tả | Công nghệ |
+|------|-------|-----------|
+| **1. Tách Vocal** | Tách vocal khỏi nhạc nền, chỉ giữ lại giọng hát sạch. | MelBand RoFormer (`audio-separator`) |
+| **2. Transcribe** | Tự động nhận diện lời bài hát tiếng Việt từ audio. | **ChunkFormer RNNT** |
+| **3. Forced Alignment** | Căn chỉnh thời gian cấp độ từ (word-level) và âm vị (phoneme). | Wav2Vec2 VN & **Montreal Forced Aligner (MFA)** |
+| **4. Trích xuất Pitch/MIDI** | Trích xuất cao độ với độ chính xác cực cao, hỗ trợ nhiều phương pháp. | **RMVPE (chuẩn DiffSinger)**, GAME, Basic-Pitch |
+| **5. Đồng bộ Dataset** | Tạo dữ liệu `.ds` đồng bộ hoàn hảo giữa Phonemes và MIDI. | **MidiPhonemeAligner** |
+| **6. Batch Processing** | Xử lý hàng nghìn bài hát cùng lúc, hỗ trợ GPU và Multiprocessing. | `spawn` mode (GPU-safe) |
 
 ---
 
 ## Yêu cầu
 
 - [pixi](https://pixi.sh) — công cụ quản lý môi trường và dependencies
-- Python 3.11 hoặc 3.12
+- Python 3.11+
+- CUDA (khuyên dùng để tăng tốc trích xuất Pitch)
 
 ---
 
@@ -33,7 +32,7 @@ Project được thiết kế tối ưu cho **tiếng Việt**, từ tách vocal
 # Cài đặt tất cả dependencies
 pixi install
 
-# Kích hoạt shell trong môi trường pixi
+# Kích hoạt môi trường
 pixi shell
 ```
 
@@ -41,131 +40,77 @@ pixi shell
 
 ## Cách sử dụng
 
-### 1. Tách vocal từ audio đầu vào
+### 1. Trích xuất MIDI & Tạo Dataset đồng bộ (Khuyên dùng)
+
+Bạn có thể tạo các bộ dữ liệu `aligned_ds` riêng biệt cho từng phương pháp trích xuất để so sánh:
 
 ```bash
-pixi run python -m svs_dataset_contruction.separator input/
+# Tạo dữ liệu cho RMVPE và GAME (chạy đa luồng 4 workers)
+pixi run svs-batch-aligned --methods rmvpe,game --workers 4
 ```
 
-- Input: `input/audio/*.wav` (hoặc mp3, flac, …)
-- Output: `input/vocals/*_vocals.wav`
+- `--methods`: Hỗ trợ `rmvpe`, `game`, `basic-pitch`, `rosvot`.
+- Kết quả sẽ được lưu vào `dataset/3_final/aligned_ds_{method}/`.
 
-### 2. Chạy full pipeline (Transcribe + FA)
+### 2. So sánh trực quan Pitch
+
+Để kiểm tra xem Pitch trích xuất có khớp với audio hay không:
 
 ```bash
-pixi run python -m svs_dataset_contruction.run_full_pipeline
+pixi run python -m svs_dataset_contruction.scripts.compare_pitch_rmvpe path/to/audio.wav
 ```
 
-### 3. Trích xuất MIDI cho toàn bộ dataset (GPU)
+### 3. Chạy Pipeline từng bước (`svs-pipeline`)
 
 ```bash
-# Sử dụng GAME (mặc định)
-pixi run svs-extract-midi --method game
+# Transcribe + Align + Segment cho 1 file
+pixi run svs-pipeline run dataset/0_input/song.wav
 
-# Sử dụng Spotify basic-pitch
-pixi run svs-extract-midi --method basic-pitch
-```
+# Chạy batch cho cả thư mục input
+pixi run svs-pipeline batch --workers 4
 
-- Sử dụng `onnxruntime-gpu` (cho GAME) hoặc `tensorflow` (cho basic-pitch) để tăng tốc độ xử lý.
-- Tự động lưu file `.midi.json` vào `dataset/3_final/midis/`.
-
-### 4. Chạy Forced Alignment batch
-
-```bash
-pixi run python -m svs_dataset_contruction.run_mfa_align dataset/mfa_corpus dataset/mfa_aligned
-```
-
-### 5. CLI từng bước (`svs-pipeline`)
-
-```bash
-# Transcribe một file
-pixi run svs-pipeline transcribe dataset/vocals/song.wav
-
-# Forced Alignment một file (tự động tìm transcript trong raw_lyric/)
-pixi run svs-pipeline align dataset/vocals/song.wav
-
-# Transcribe + Align một file
-pixi run svs-pipeline run dataset/vocals/song.wav
-```
-
-### 5. Tổng hợp dataset cuối cùng (Finalize)
-
-```bash
+# Tổng hợp dữ liệu cuối cùng
 pixi run svs-pipeline finalize
 ```
-- Gom toàn bộ dữ liệu (wav, TextGrid, midi) từ workspace và phẳng hoá vào thư mục `dataset/3_final/`.
-- Tự động tạo `metadata.csv` tổng hợp cho huấn luyện.
 
 ---
 
-## Cấu trúc dataset (Scientific Layout)
-
-Dữ liệu được quản lý tự động thông qua `svs_dataset_contruction.config.DatasetPaths` theo từng giai đoạn xử lý:
+## Cấu trúc Dataset (Phát triển bởi Pipeline)
 
 ```text
 dataset/
-├── 0_input/                # Dữ liệu nguyên thủy & metadata.csv khởi tạo
-├── 1_interim/              # Kết quả sau các bước xử lý toàn bộ bài hát
-│   ├── vocals/             # Tracks vocal (đã tách)
-│   ├── lyrics/             # Transcript thô (.txt)
-│   └── textgrids_full/     # Alignment thô bằng Wav2Vec2 (.TextGrid)
-├── 2_mfa_workspace/        # Không gian làm việc cho MFA
-│   ├── corpus/             # Segments thô (cắt từ TextGrid thô)
-│   └── aligned/            # Segments đã align lại bằng MFA (.TextGrid)
-└── 3_final/                # Dataset đầu ra (Sẵn sàng cho SVS models)
-    ├── wavs/               # Segments âm thanh
-    ├── textgrids/          # Segments alignment
-    ├── midis/              # Segments cao độ/note (tuỳ chọn)
-    ├── aligned_ds/         # Dữ liệu đã đồng bộ MIDI + Phonemes (chuẩn DiffSinger)
-    └── metadata.csv        # File ánh xạ dùng để train (item_name, paths, etc)
+├── 0_input/                # Audio gốc đầu vào
+├── 1_interim/              # Kết quả trung gian (vocals, lyrics, full textgrids)
+├── 2_mfa_workspace/        # Không gian làm việc cho Montreal Forced Aligner
+└── 3_final/                # Dữ liệu đích cho việc huấn luyện
+    ├── wavs/               # Audio segments (0.5s - 15s)
+    ├── textgrids/          # Alignment segments
+    ├── midis_rmvpe/        # MIDI trích xuất bằng RMVPE
+    ├── aligned_ds_rmvpe/   # Dữ liệu .ds (Phoneme + MIDI) dùng train DiffSinger
+    └── metadata.csv        # Metadata tổng hợp
 ```
 
 ---
 
-## Cấu trúc project
+## Cấu trúc Project (Refactored)
 
+```text
+src/svs_dataset_contruction/
+├── extractors/      # Logic trích xuất Pitch (RMVPE, GAME, BasicPitch, Rosvot)
+├── aligners/        # Logic đồng bộ hóa (MFA, MIDI-Phoneme)
+├── utils/           # Tiện ích (Transcriber, Segmenter, Separator, Visualization)
+├── scripts/         # Các script chạy Batch và CLI tools
+├── config.py        # Quản lý đường dẫn và cấu hình tập trung
+└── pipeline.py      # Logic pipeline chính
 ```
-SVS_dataset_contruction/
-├── src/svs_dataset_contruction/    # Toàn bộ mã nguồn nằm ở đây
-│   ├── __init__.py
-│   ├── pipeline.py                 # CLI chính (run / batch / finalize)
-│   ├── config.py                   # Quản lý đường dẫn (DatasetPaths) & settings
-│   ├── transcriber.py              # Transcribe audio → lyrics
-│   ├── aligner.py                  # Forced Alignment (Wav2Vec2)
-│   ├── separator.py                # Tách vocal (MelBand RoFormer)
-│   ├── segmenter.py                # Cắt audio thành segment
-│   ├── game_note_extractor.py      # Trích xuất MIDI (GAME model ONNX)
-│   ├── note_extractor.py           # NoteExtractor wrapper
-│   ├── extract_midi_batch.py       # Batch trích xuất MIDI (GPU)
-│   ├── run_full_pipeline.py        # Batch transcribe + FA
-│   └── run_mfa_align.py            # Batch MFA alignment
-├── pyproject.toml                  # Pixi workspace & dependencies
-├── GEMINI.md                       # Định hướng môi trường & AI
-├── README.md                       # File này
-└── dataset/                        # Thư mục dữ liệu (như cấu trúc trên)
-```
-
----
-
-## Các lệnh Pixi thường dùng
-
-| Lệnh | Mô tả |
-|------|-------|
-| `pixi install` | Cài đặt các dependencies từ `pyproject.toml` |
-| `pixi shell` | Kích hoạt môi trường ảo của pixi |
-| `pixi run <cmd>` | Chạy một command trong môi trường ảo |
-| `pixi add <package>` | Thêm package mới vào dependencies |
-| `pixi task add <name> <cmd>` | Định nghĩa một task mới |
-| `pixi run <name>` | Chạy task đã định nghĩa |
 
 ---
 
 ## Thông tin kỹ thuật
 
-- **Build system**: [hatchling](https://hatch.pypa.io/)
-- **Channels**: conda-forge
-- **Platform**: linux-64
-- **Python**: 3.11 hoặc 3.12
+- **MFA Model**: Vietnamese (MFA)
+- **RMVPE**: Sử dụng Mel HTK và Weighted Average Decoding (độ chính xác cấp độ cent).
+- **Multiprocessing**: Sử dụng `spawn` method để đảm bảo an toàn khi khởi tạo CUDA trong subprocess.
 
 ## License
 

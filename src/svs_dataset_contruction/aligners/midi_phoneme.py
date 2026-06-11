@@ -22,9 +22,16 @@ class MidiPhonemeAligner:
     Tạo ra cấu trúc dữ liệu chuẩn bị cho việc huấn luyện các mô hình SVS (như DiffSinger).
     """
 
-    def __init__(self, paths: DatasetPaths = None):
+    def __init__(self, paths: DatasetPaths = None, method: str | None = None, midi_dir: Path | None = None, output_dir: Path | None = None):
         self.paths = paths or DatasetPaths()
-        self.output_dir = self.paths.final_aligned_ds
+        self.method = method
+        
+        if method:
+            self.midi_dir, self.output_dir = self.paths.get_method_paths(method)
+        else:
+            self.midi_dir = midi_dir or self.paths.final_midis
+            self.output_dir = output_dir or self.paths.final_aligned_ds
+            
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def process_dataset(self):
@@ -36,9 +43,14 @@ class MidiPhonemeAligner:
         df = pd.read_csv(metadata_path)
         
         results = []
-        for _, row in tqdm(df.iterrows(), total=len(df), desc="Aligning Phonemes & MIDI"):
+        for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Aligning Phonemes & MIDI ({self.method or 'custom'})"):
             tg_path = self.paths.root / row["textgrid_path"]
-            midi_path = self.paths.root / row["midi_path"] if pd.notna(row["midi_path"]) else None
+            
+            # Resolve MIDI path based on current configuration
+            if self.method:
+                midi_path = self.midi_dir / f"{row['item_name']}.midi.json"
+            else:
+                midi_path = self.paths.root / row["midi_path"] if pd.notna(row["midi_path"]) else None
             
             if not tg_path.exists() or not midi_path or not midi_path.exists():
                 continue
@@ -181,5 +193,10 @@ class MidiPhonemeAligner:
         }]
 
 if __name__ == "__main__":
-    aligner = MidiPhonemeAligner()
+    import argparse
+    parser = argparse.ArgumentParser(description="Align Phonemes and MIDI")
+    parser.add_argument("--method", type=str, help="MIDI extraction method (to use method-specific paths)")
+    args = parser.parse_args()
+    
+    aligner = MidiPhonemeAligner(method=args.method)
     aligner.process_dataset()

@@ -25,10 +25,10 @@ from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
-from .transcriber import Transcriber
-from .aligner import ForcedAligner, WordTimestamp
-from .segmenter import Segmenter, SegmentInfo
-from .mfa_segment_aligner import MfaSegmentAligner
+from .utils.transcriber import Transcriber
+from .aligners.mfa import ForcedAligner, WordTimestamp
+from .utils.segmenter import Segmenter, SegmentInfo
+from .aligners.mfa_segment import MfaSegmentAligner
 from .config import TranscriberConfig, AlignerConfig, SegmenterConfig, DatasetPaths
 
 

@@ -5,16 +5,13 @@
 #   from svs_dataset_contruction import Transcriber, ForcedAligner, Segmenter
 #   from svs_dataset_contruction import WordTimestamp, SegmentInfo
 #   from svs_dataset_contruction import TranscriberConfig, AlignerConfig, SegmenterConfig
-#
-# NOTE: VocalSeparator cần onnxruntime & audio-separator.
-#       Import thủ công nếu cần: from svs_dataset_contruction.separator import VocalSeparator
 
 from .pipeline import SVSPipeline
-from .transcriber import Transcriber
-from .aligner import ForcedAligner, WordTimestamp
-from .segmenter import Segmenter, SegmentInfo
-from .preparator import DatasetPreparator
-from .note_extractor import NoteExtractor
+from .utils.transcriber import Transcriber
+from .aligners.mfa import ForcedAligner, WordTimestamp
+from .utils.segmenter import Segmenter, SegmentInfo
+from .utils.preparator import DatasetPreparator
+from .extractors.note_extractor import NoteExtractor
 from .config import (
     TranscriberConfig,
     AlignerConfig,
@@ -43,4 +40,4 @@ __all__ = [
 
 # VocalSeparator có dependency nặng (onnxruntime, audio-separator).
 # Không auto-import để tránh lỗi khi chưa cài đủ dependencies.
-# Dùng: from svs_dataset_contruction.separator import VocalSeparator
+# Dùng: from svs_dataset_contruction.utils.separator import VocalSeparator

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from audio_separator.separator import Separator
 
-from .config import SeparatorConfig
+from ..config import SeparatorConfig
 
 
 class VocalSeparator:

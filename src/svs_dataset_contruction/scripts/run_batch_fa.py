@@ -13,7 +13,7 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from svs_dataset_contruction.aligner import ForcedAligner
+from svs_dataset_contruction.aligners.mfa import ForcedAligner
 from svs_dataset_contruction.config import AlignerConfig
 
 

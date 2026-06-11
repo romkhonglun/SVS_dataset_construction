@@ -8,7 +8,7 @@ from pathlib import Path
 
 from chunkformer import ChunkFormerModel
 
-from .config import TranscriberConfig
+from ..config import TranscriberConfig
 
 
 class Transcriber:

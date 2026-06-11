@@ -14,7 +14,7 @@ import torch
 import torchaudio
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 
-from .config import AlignerConfig
+from ..config import AlignerConfig
 
 
 @dataclass

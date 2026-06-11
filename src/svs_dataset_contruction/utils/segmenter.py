@@ -14,8 +14,8 @@ import numpy as np
 import soundfile as sf
 import textgrid
 
-from .aligner import WordTimestamp
-from .config import SegmenterConfig
+from ..aligners.mfa import WordTimestamp
+from ..config import SegmenterConfig
 
 
 @dataclass

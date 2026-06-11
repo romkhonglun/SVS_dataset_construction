@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from .note_extractor import NoteExtractor
+from ..extractors.note_extractor import NoteExtractor
 
 def main():
     folder_path = Path("dataset/mfa_corpus/kGJZ-kPno_(vocals)_vocals_mel_band_roformer")

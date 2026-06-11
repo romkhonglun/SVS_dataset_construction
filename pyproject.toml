@@ -11,7 +11,7 @@ dependencies = [
     "soundfile>=0.12",
     "numpy>=1.26",
     "tqdm>=4.66", "chunkformer @ git+https://github.com/khanld/chunkformer.git",
-    "basic-pitch>=0.3",
+    "basic-pitch>=0.3", "pyworld>=0.3.5,<0.4", "torchmetrics>=1.0.3,<2", "mir-eval>=0.8.2,<0.9", "pretty-midi>=0.2.11,<0.3", "pyloudnorm>=0.2.0,<0.3", "scikit-image>=0.26.0,<0.27", "g2p-en>=2.1.0,<3", "npy-append-array>=0.9.19,<0.10", "webrtcvad>=2.0.10,<3", "einops>=0.8.2,<0.9", "pytorch-lightning>=2.6.5,<3",
 ]
 name = "SVS_dataset_contruction"
 requires-python = ">= 3.11"
@@ -19,7 +19,7 @@ version = "0.1.0"
 
 [project.scripts]
 svs-pipeline = "svs_dataset_contruction.pipeline:main"
-svs-extract-midi = "svs_dataset_contruction.extract_midi_batch:main"
+svs-extract-midi = "svs_dataset_contruction.scripts.extract_midi_batch:main"
 
 [build-system]
 build-backend = "hatchling.build"
@@ -56,3 +56,4 @@ basic-pitch = ">=0.3"
 allow-direct-references = true
 
 [tool.pixi.tasks]
+svs-batch-aligned = "python -m svs_dataset_contruction.scripts.run_aligned_ds_batch"

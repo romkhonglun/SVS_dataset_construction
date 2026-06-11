@@ -55,6 +55,12 @@ class DatasetPaths:
         self.final_midis = self.final / "midis"
         self.final_aligned_ds = self.final / "aligned_ds"
 
+    def get_method_paths(self, method: str):
+        """Trả về các đường dẫn riêng biệt cho từng phương pháp trích xuất MIDI."""
+        midis_dir = self.final / f"midis_{method}"
+        aligned_ds_dir = self.final / f"aligned_ds_{method}"
+        return midis_dir, aligned_ds_dir
+
     def mkdir(self):
         """Tạo tất cả thư mục nếu chưa tồn tại."""
         for attr in self.__dict__.values():
